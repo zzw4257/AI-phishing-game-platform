@@ -1,12 +1,41 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { AlertTriangle, CheckCircle2, ClipboardList, Scale, Trophy } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ClipboardList, Scale, Trophy, Filter, ListChecks, Sparkles } from 'lucide-react'
 import Layout from '../components/Layout'
 import { fetchCurrentRound, fetchMailbox, fetchStatistics, submitJudgement } from '../lib/api'
 import type { MailboxMessage, Player, Round, ScoreboardEntry } from '../types/game'
 import { describeStatus } from '../lib/stage'
 
 const fallbackHtml = (text: string) => text.replace(/\n/g, '<br/>')
+
+const clueTemplate = {
+  urgency: false,
+  reward: false,
+  data: false,
+  impersonation: false
+}
+
+const clueOptions: Array<{ key: keyof typeof clueTemplate; label: string; hint: string }> = [
+  { key: 'urgency', label: '紧迫压力', hint: '24 小时内 / 立即处理 等强制语气' },
+  { key: 'reward', label: '金钱诱惑', hint: '奖励、补贴、话费等吸引' },
+  { key: 'data', label: '索要隐私', hint: '身份证、基因、银行卡等敏感信息' },
+  { key: 'impersonation', label: '伪装权威', hint: '假冒官方、同事或上级' }
+]
+
+const quickReasonTemplates = ['域名/邮箱非官方', '要求上传与任务无关的隐私数据', '以奖励/补贴诱导点击链接', '限时威胁或未给回拨核验方式']
+
+const keywordSignals: Array<{ label: string; regex: RegExp }> = [
+  { label: '限时或倒计时', regex: /(限时|立即|24小时|4小时|马上|紧急)/i },
+  { label: '奖励/补贴诱导', regex: /(奖励|话费|红包|补贴|返现)/i },
+  { label: '费用或转账', regex: /(汇款|转账|手续费|加急费)/i },
+  { label: '索要隐私数据', regex: /(身份证|基因|银行卡|验证码|密码)/i },
+  { label: '假冒权威措辞', regex: /(总局|督查|内鬼|内部|机密)/i }
+]
+
+const detectSignals = (message: MailboxMessage['message']) => {
+  const source = `${message.subject} ${message.body}`.replace(/<[^>]+>/g, ' ')
+  return keywordSignals.filter((item) => item.regex.test(source)).map((item) => item.label)
+}
 
 export default function CitizenPage() {
   const location = useLocation()
@@ -19,8 +48,27 @@ export default function CitizenPage() {
   const [selected, setSelected] = useState<Record<string, 'trust' | 'suspect'>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'pending' | 'judged'>('all')
+  const [clues, setClues] = useState<Record<string, typeof clueTemplate>>({})
   const stageMeta = describeStatus(round?.status)
   const canVote = !!(round && ['judging', 'retro'].includes(round.status))
+  const totalMessages = mailbox.length
+  const judgedCount = useMemo(() => Object.keys(selected).length, [selected])
+  const completionRate = totalMessages > 0 ? Math.round((judgedCount / totalMessages) * 100) : 0
+  const filterOptions: Array<{ key: 'all' | 'pending' | 'judged'; label: string }> = [
+    { key: 'all', label: '全部邮件' },
+    { key: 'pending', label: '待判定' },
+    { key: 'judged', label: '已完成' }
+  ]
+  const filteredMailbox = useMemo(() => {
+    if (filter === 'pending') {
+      return mailbox.filter((item) => !selected[item.message.id])
+    }
+    if (filter === 'judged') {
+      return mailbox.filter((item) => !!selected[item.message.id])
+    }
+    return mailbox
+  }, [mailbox, filter, selected])
 
   useEffect(() => {
     if (!player) return
@@ -29,6 +77,17 @@ export default function CitizenPage() {
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player?.id])
+
+  useEffect(() => {
+    if (filteredMailbox.length === 0) {
+      setActiveMessageId(null)
+      return
+    }
+    const exists = filteredMailbox.some((item) => item.message.id === activeMessageId)
+    if (!exists) {
+      setActiveMessageId(filteredMailbox[0].message.id)
+    }
+  }, [filteredMailbox, activeMessageId])
 
   const loadAll = async () => {
     try {
@@ -94,6 +153,27 @@ export default function CitizenPage() {
     }
   }
 
+  const toggleClue = (messageId: string, key: keyof typeof clueTemplate) => {
+    setClues((prev) => {
+      const current = prev[messageId] || { ...clueTemplate }
+      return {
+        ...prev,
+        [messageId]: {
+          ...current,
+          [key]: !current[key]
+        }
+      }
+    })
+  }
+
+  const appendQuickReason = (messageId: string, template: string) => {
+    setNotes((prev) => {
+      const current = prev[messageId] || ''
+      const next = current ? `${current.trim()}\n${template}` : template
+      return { ...prev, [messageId]: next }
+    })
+  }
+
   if (!player) {
     return (
       <Layout role="citizen">
@@ -107,7 +187,9 @@ export default function CitizenPage() {
     )
   }
 
-  const activeMessage = mailbox.find((item) => item.message.id === activeMessageId)
+  const activeMessage = filteredMailbox.find((item) => item.message.id === activeMessageId)
+  const activeClues = activeMessage ? clues[activeMessage.message.id] || { ...clueTemplate } : { ...clueTemplate }
+  const autoSignals = activeMessage ? detectSignals(activeMessage.message) : []
 
   return (
     <Layout role="citizen">
@@ -128,6 +210,42 @@ export default function CitizenPage() {
 
           {round ? (
             <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="border rounded-lg p-4 bg-white/70">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900">完成度</p>
+                    <span className="text-xs text-gray-500">
+                      {judgedCount}/{totalMessages || 0}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 transition-all" style={{ width: `${completionRate}%` }} />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {canVote ? '请在判断阶段完成所有邮件投票。' : '等待主持人开放判断阶段。'}
+                  </p>
+                </div>
+                <div className="border rounded-lg p-4 bg-white/70">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-gray-900">邮箱筛选</p>
+                    <Filter className="h-4 w-4 text-gray-500" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {filterOptions.map((option) => (
+                      <button
+                        key={option.key}
+                        onClick={() => setFilter(option.key)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition ${
+                          filter === option.key ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 text-gray-600'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">“待判定”= 尚未提交判断的邮件。</p>
+                </div>
+              </div>
               <div className="border rounded-lg p-4 bg-gray-50 mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 mb-1">场景线索</h2>
                 <p className="text-sm text-gray-600">{round.scenario.background}</p>
@@ -152,10 +270,12 @@ export default function CitizenPage() {
               )}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="border rounded-lg divide-y max-h-[520px] overflow-y-auto">
-                {mailbox.length === 0 ? (
-                  <p className="p-4 text-sm text-gray-500">钓鱼大师与城市领袖尚未发送邮件。</p>
+                {filteredMailbox.length === 0 ? (
+                  <p className="p-4 text-sm text-gray-500">
+                    {mailbox.length === 0 ? '钓鱼大师与城市领袖尚未发送邮件。' : filter === 'pending' ? '祝贺！已经完成所有邮件判断。' : '暂无符合筛选条件的邮件。'}
+                  </p>
                 ) : (
-                  mailbox.map((item) => {
+                  filteredMailbox.map((item) => {
                     const verdict = selected[item.message.id]
                     return (
                       <button
@@ -207,6 +327,46 @@ export default function CitizenPage() {
                         </ul>
                       </div>
                     )}
+                    <div className="mt-4 border rounded-lg p-3 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 text-gray-700 text-sm font-semibold">
+                          <ListChecks className="h-4 w-4 text-emerald-600" />
+                          线索标记
+                        </div>
+                        <span className="text-xs text-gray-500">仅本地保存</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {clueOptions.map((option) => {
+                          const isActive = activeClues[option.key]
+                          return (
+                            <button
+                              key={option.key}
+                              type="button"
+                              title={option.hint}
+                              onClick={() => toggleClue(activeMessage.message.id, option.key)}
+                              className={`px-3 py-1.5 text-xs rounded-full border transition ${
+                                isActive ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'border-gray-200 text-gray-600'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    {autoSignals.length > 0 && (
+                      <div className="mt-3 border rounded-lg p-3 bg-amber-50 text-sm">
+                        <div className="flex items-center gap-2 text-amber-700 font-semibold mb-1">
+                          <Sparkles className="h-4 w-4" />
+                          系统提示
+                        </div>
+                        <ul className="list-disc list-inside text-amber-800 space-y-0.5">
+                          {autoSignals.map((signal) => (
+                            <li key={signal}>{signal}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     <div className="mt-4 space-y-2">
                       <label className="text-xs text-gray-600">判断依据 (可选)</label>
                       <textarea
@@ -216,6 +376,18 @@ export default function CitizenPage() {
                         className="w-full border rounded-md px-3 py-2 text-sm"
                         placeholder="记录你发现的漏洞、语气或证据…"
                       />
+                      <div className="flex flex-wrap gap-2">
+                        {quickReasonTemplates.map((reason) => (
+                          <button
+                            key={reason}
+                            type="button"
+                            onClick={() => appendQuickReason(activeMessage.message.id, reason)}
+                            className="px-3 py-1 text-xs rounded-full border border-gray-200 text-gray-600 hover:border-gray-400"
+                          >
+                            {reason}
+                          </button>
+                        ))}
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleVote(activeMessage.message.id, 'trust')}
