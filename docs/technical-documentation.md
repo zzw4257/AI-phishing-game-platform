@@ -28,6 +28,7 @@
 | POST | `/rounds/:id/phase` | 切换阶段（校验草稿/判断/顺序） |
 | GET | `/templates` | 查询邮件模板（支持 `scenarioId`/`role` 过滤） |
 | GET | `/challenges` | 查询挑战卡列表（每张卡包含摘要、压测规则及三类角色提示） |
+| POST | `/assistant` | 代理调用 Ollama `qwen3:latest`，根据角色/回合上下文返回 HTML 建议 |
 | POST | `/messages` | 钓鱼大师/城市领袖提交邮件，仅 `drafting` 可写 |
 | GET | `/mailbox?roundId=&playerId=` | 市民邮箱（仅返回其可见邮件 + 个人判断） |
 | POST | `/judgements` | 市民判断，仅 `judging/retro` 可写 |

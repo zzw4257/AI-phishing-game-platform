@@ -1201,6 +1201,124 @@ app.get('/api/analytics', (_req, res) => {
   res.json(computeAdvancedAnalytics())
 })
 
+function buildAssistantPrompt({ role, round, draft }) {
+  const roleLabel = role === 'phisher' ? '钓鱼大师 (InfoPhisher)' : '城市领袖 (InfoLeader)'
+  const scenario = round.scenario
+  const challenge = round.challenge_card
+  const guidelines =
+    role === 'phisher'
+      ? [
+          '核心目标：伪装成可信权威，通过钓鱼或社会工程收集敏感数据或诱导支付。',
+          '必须隐藏自己的攻击意图，语气自然可信，可使用奖励、紧迫感或假冒流程。',
+          '提供的内容需兼顾真实可读性与攻击性，优先输出 HTML（含段落、列表、强调等），正文要有结构。',
+          '可以建议伪造附件名、短链描述、From Alias。',
+          '严禁直接提到自己是 AI 或提供模型调用细节。'
+        ]
+      : [
+          '核心目标：发布权威、透明的官方通知，引用真实法规/流程，让市民安心且识别钓鱼。',
+          '需强调核验渠道、隐私保护、举报方式与回拨信息，鼓励市民谨慎。',
+          '提供的内容应为 HTML（含标题、段落、提醒），语气稳重可信。',
+          '可以建议附件说明、FAQ、数据最小化提示。'
+        ]
+  const systemPrompt = [
+    `你是一名嵌入 InfoBattle 平台的文本智能助手，角色为：${roleLabel}。`,
+    '请根据提供的场景信息、挑战卡约束和用户草稿，产出一份新的邮件建议。',
+    '输出应包含：',
+    '1. 简短的策略说明（用 <section data-type="strategy"> 包裹）。',
+    '2. 优化后的邮件 HTML 正文（用 <section data-type="email"> 包裹，确保可直接插入编辑器）。',
+    '3. 可选的建议列表（如附件、From Alias、CTA），用 <section data-type="tips">。',
+    '严格使用 HTML，避免 Markdown；不要包含 <html> 或 <body>，只输出可嵌入片段。',
+    '所有字段均用中文输出。',
+    '如果请求包含“纯文本转成HTML”或“润色”类需求，优先复用用户草稿做转换。',
+    '若当前阶段为 Judging/Retro，请仅给出复盘建议，不要新增正文。'
+  ].join('\n')
+
+  const parts = [
+    `【场景】${scenario.name}\n背景：${scenario.background}`,
+    `【角色任务】\n- 钓鱼大师：${scenario.phisher_task}\n- 城市领袖：${scenario.city_leader_task}`,
+    `【市民警觉点】${scenario.risk_hints}`
+  ]
+  if (challenge) {
+    parts.push(
+      `【挑战卡】${challenge.name}（难度：${challenge.difficulty}）\n压力规则：${challenge.pressure}`,
+      `钓鱼提示：${challenge.phisher_objectives.join('；')}`,
+      `领袖提示：${challenge.leader_objectives.join('；')}`,
+      `市民情报：${challenge.citizen_hints.join('；')}`
+    )
+  }
+  if (draft?.subject || draft?.body || draft?.contentHtml) {
+    parts.push(
+      `【当前草稿】主题：${draft.subject || '（未填写）'}\n纯文本：${draft.body || '（无）'}\nHTML：${
+        (draft.contentHtml || '').replace(/\s+/g, ' ').slice(0, 800) || '（无）'
+      }`
+    )
+  }
+  if (draft?.instructions) {
+    parts.push(`【作者需求】${draft.instructions}`)
+  }
+  return { systemPrompt, userPrompt: parts.join('\n\n') }
+}
+
+async function callAssistant({ role, roundId, instructions, draft }) {
+  const round = getRoundById(roundId)
+  if (!round) {
+    throw new Error('回合不存在')
+  }
+  const { systemPrompt, userPrompt } = buildAssistantPrompt({
+    role,
+    round,
+    draft: { ...draft, instructions }
+  })
+  const endpoint = 'http://10.202.94.52:20232/api/generate'
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'qwen3:latest',
+      prompt: userPrompt,
+      system: systemPrompt,
+      stream: false,
+      options: {
+        temperature: 0.6,
+        top_p: 0.9,
+        presence_penalty: 0.2
+      }
+    })
+  })
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(text || '助手调用失败')
+  }
+  const data = await response.json()
+  const output = data?.response || data?.message || ''
+  if (!output) {
+    throw new Error('助手未返回内容')
+  }
+  return output
+}
+
+app.post('/api/assistant', async (req, res) => {
+  const { role, roundId, instructions, draft } = req.body || {}
+  if (!['phisher', 'leader'].includes(role)) {
+    return res.status(400).json({ error: '角色参数无效' })
+  }
+  if (!roundId) {
+    return res.status(400).json({ error: '缺少 roundId' })
+  }
+  try {
+    const result = await callAssistant({
+      role,
+      roundId,
+      instructions: instructions || '',
+      draft: draft || {}
+    })
+    res.json({ output: result })
+  } catch (error) {
+    console.error('assistant_error', error)
+    res.status(502).json({ error: error.message || '助手服务暂时不可用' })
+  }
+})
+
 app.get('/api/statistics', (_req, res) => {
   const scoreboard = computeScoreboard()
   const round = getLatestRoundRow()

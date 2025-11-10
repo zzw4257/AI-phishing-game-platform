@@ -143,3 +143,15 @@ export function fetchAnalytics() {
 export function fetchChallenges() {
   return request<{ challenges: ChallengeCard[] }>(`/challenges`)
 }
+
+export function askAssistant(payload: {
+  role: 'phisher' | 'leader'
+  roundId: string
+  instructions?: string
+  draft?: { subject?: string; body?: string; contentHtml?: string }
+}) {
+  return request<{ output: string }>(`/assistant`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}

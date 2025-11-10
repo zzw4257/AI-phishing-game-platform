@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Crown, ClipboardList, Mail, Shield, Users, Palette, Send } from 'lucide-react'
+import { Crown, ClipboardList, Mail, Shield, Users, Palette, Send, Sparkles, Replace, Copy } from 'lucide-react'
 import Layout from '../components/Layout'
-import { fetchCurrentRound, fetchTemplates, submitMessage } from '../lib/api'
+import { askAssistant, fetchCurrentRound, fetchTemplates, submitMessage } from '../lib/api'
 import type { EmailTemplate, Player, Round } from '../types/game'
 import { describeStatus } from '../lib/stage'
 
@@ -27,6 +27,9 @@ export default function CityLeaderPage() {
   const [loading, setLoading] = useState(true)
   const [dirty, setDirty] = useState(false)
   const [roundId, setRoundId] = useState<string | null>(null)
+  const [assistantInstructions, setAssistantInstructions] = useState('')
+  const [assistantOutput, setAssistantOutput] = useState('')
+  const [assistantLoading, setAssistantLoading] = useState(false)
 
   useEffect(() => {
     if (!player) return
@@ -236,6 +239,82 @@ export default function CityLeaderPage() {
                     </div>
                   </div>
                 )}
+
+                <div className="border rounded-lg p-4 bg-white/80 space-y-3">
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Sparkles className="h-4 w-4 text-indigo-600" />
+                    AI 小助手 · qwen3:latest
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    描述你的诉求（如：引用法规、将纯文本转 HTML、强化隐私提醒），助手将输出可直接粘贴的官方通知片段。
+                  </p>
+                  <textarea
+                    value={assistantInstructions}
+                    onChange={(e) => setAssistantInstructions(e.target.value)}
+                    placeholder="示例：请把下面的文本转换成带有法规引用的 HTML，并加入举报电话…"
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    rows={3}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!roundId) {
+                          alert('当前没有正在进行的回合')
+                          return
+                        }
+                        setAssistantLoading(true)
+                        try {
+                          const res = await askAssistant({
+                            role: 'leader',
+                            roundId,
+                            instructions: assistantInstructions,
+                            draft: { subject, body, contentHtml }
+                          })
+                          setAssistantOutput(res.output)
+                        } catch (error: any) {
+                          alert(error.message || '助手暂时不可用')
+                        } finally {
+                          setAssistantLoading(false)
+                        }
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
+                      disabled={!roundId || assistantLoading}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      {assistantLoading ? '生成中…' : '生成建议'}
+                    </button>
+                    {assistantOutput && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setContentHtml(assistantOutput)
+                            setBody(stripHtml(assistantOutput))
+                            setDirty(true)
+                          }}
+                          className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-md text-gray-700 hover:border-indigo-300"
+                        >
+                          <Replace className="h-4 w-4" />
+                          用作 HTML 正文
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigator?.clipboard?.writeText(assistantOutput)}
+                          className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-md text-gray-700 hover:border-indigo-300"
+                        >
+                          <Copy className="h-4 w-4" />
+                          复制
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {assistantOutput && (
+                    <div className="border rounded-lg bg-gray-50 p-3 max-h-64 overflow-y-auto text-xs text-gray-800">
+                      <div dangerouslySetInnerHTML={{ __html: assistantOutput }} />
+                    </div>
+                  )}
+                </div>
 
                 <div className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
