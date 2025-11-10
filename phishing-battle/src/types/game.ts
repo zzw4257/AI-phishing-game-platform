@@ -132,6 +132,15 @@ export interface MailboxMessage {
   judgement?: Judgement
 }
 
+export interface AssistantSuggestion {
+  strategy: string[]
+  subjectIdeas: string[]
+  fromAliasIdeas: string[]
+  replyToIdeas: string[]
+  htmlBody: string
+  textBody: string
+}
+
 export interface TimelineEvent {
   id: string
   type: 'round_started' | 'role_assigned' | 'message_submitted' | 'judgement_submitted' | 'round_completed'

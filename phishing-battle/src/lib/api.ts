@@ -8,7 +8,8 @@ import type {
   MailboxMessage,
   AdvancedAnalytics,
   RoundReport,
-  ChallengeCard
+  ChallengeCard,
+  AssistantSuggestion
 } from '../types/game'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5678/api'
@@ -150,7 +151,7 @@ export function askAssistant(payload: {
   instructions?: string
   draft?: { subject?: string; body?: string; contentHtml?: string }
 }) {
-  return request<{ output: string }>(`/assistant`, {
+  return request<{ output: string; suggestion?: AssistantSuggestion }>(`/assistant`, {
     method: 'POST',
     body: JSON.stringify(payload)
   })

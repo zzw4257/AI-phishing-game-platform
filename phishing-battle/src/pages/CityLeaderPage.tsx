@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Crown, ClipboardList, Mail, Shield, Users, Palette, Send, Sparkles, Replace, Copy } from 'lucide-react'
 import Layout from '../components/Layout'
 import { askAssistant, fetchCurrentRound, fetchTemplates, submitMessage } from '../lib/api'
-import type { EmailTemplate, Player, Round } from '../types/game'
+import type { AssistantSuggestion, EmailTemplate, Player, Round } from '../types/game'
 import { describeStatus } from '../lib/stage'
 
 const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
@@ -30,6 +30,7 @@ export default function CityLeaderPage() {
   const [assistantInstructions, setAssistantInstructions] = useState('')
   const [assistantOutput, setAssistantOutput] = useState('')
   const [assistantLoading, setAssistantLoading] = useState(false)
+  const [assistantSuggestion, setAssistantSuggestion] = useState<AssistantSuggestion | null>(null)
 
   useEffect(() => {
     if (!player) return
@@ -272,6 +273,7 @@ export default function CityLeaderPage() {
                             draft: { subject, body, contentHtml }
                           })
                           setAssistantOutput(res.output)
+                          setAssistantSuggestion(res.suggestion || null)
                         } catch (error: any) {
                           alert(error.message || '助手暂时不可用')
                         } finally {
@@ -284,7 +286,34 @@ export default function CityLeaderPage() {
                       <Sparkles className="h-4 w-4" />
                       {assistantLoading ? '生成中…' : '生成建议'}
                     </button>
-                    {assistantOutput && (
+                    {assistantSuggestion && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setContentHtml(assistantSuggestion.htmlBody || '')
+                            setBody(stripHtml(assistantSuggestion.htmlBody || assistantSuggestion.textBody || ''))
+                            setDirty(true)
+                          }}
+                          className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-md text-gray-700 hover:border-indigo-300"
+                        >
+                          <Replace className="h-4 w-4" />
+                          用 AI HTML 正文
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBody(assistantSuggestion.textBody || stripHtml(assistantSuggestion.htmlBody || ''))
+                            setDirty(true)
+                          }}
+                          className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-md text-gray-700 hover:border-indigo-300"
+                        >
+                          <Replace className="h-4 w-4" />
+                          用纯文本正文
+                        </button>
+                      </>
+                    )}
+                    {assistantOutput && !assistantSuggestion && (
                       <>
                         <button
                           type="button"
@@ -309,7 +338,72 @@ export default function CityLeaderPage() {
                       </>
                     )}
                   </div>
-                  {assistantOutput && (
+                  {assistantSuggestion && (
+                    <div className="space-y-3 border rounded-lg bg-gray-50 p-3 max-h-80 overflow-y-auto text-sm text-gray-800">
+                      {assistantSuggestion.strategy?.length > 0 && (
+                        <div>
+                          <p className="font-semibold text-gray-900 mb-1">策略建议</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            {assistantSuggestion.strategy.map((item, idx) => (
+                              <li key={idx}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {assistantSuggestion.subjectIdeas?.map((idea) => (
+                          <button
+                            key={idea}
+                            type="button"
+                            onClick={() => {
+                              setSubject(idea)
+                              setDirty(true)
+                            }}
+                            className="px-3 py-1.5 text-xs rounded-full border border-indigo-200 text-indigo-700"
+                          >
+                            {idea}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {assistantSuggestion.fromAliasIdeas?.map((idea) => (
+                          <button
+                            key={idea}
+                            type="button"
+                            onClick={() => {
+                              setFromAlias(idea)
+                              setDirty(true)
+                            }}
+                            className="px-3 py-1.5 text-xs rounded-full border border-gray-200 text-gray-700"
+                          >
+                            {idea}
+                          </button>
+                        ))}
+                        {assistantSuggestion.replyToIdeas?.map((idea) => (
+                          <button
+                            key={idea}
+                            type="button"
+                            onClick={() => {
+                              setReplyTo(idea)
+                              setDirty(true)
+                            }}
+                            className="px-3 py-1.5 text-xs rounded-full border border-gray-200 text-gray-700"
+                          >
+                            Reply-To: {idea}
+                          </button>
+                        ))}
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">HTML 预览</p>
+                        <div className="border rounded-md bg-white p-3 text-xs" dangerouslySetInnerHTML={{ __html: assistantSuggestion.htmlBody || '' }} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">纯文本预览</p>
+                        <pre className="border rounded-md bg-white p-3 text-xs whitespace-pre-wrap">{assistantSuggestion.textBody}</pre>
+                      </div>
+                    </div>
+                  )}
+                  {assistantOutput && !assistantSuggestion && (
                     <div className="border rounded-lg bg-gray-50 p-3 max-h-64 overflow-y-auto text-xs text-gray-800">
                       <div dangerouslySetInnerHTML={{ __html: assistantOutput }} />
                     </div>

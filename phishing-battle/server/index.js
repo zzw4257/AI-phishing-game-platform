@@ -1221,16 +1221,24 @@ function buildAssistantPrompt({ role, round, draft }) {
           '可以建议附件说明、FAQ、数据最小化提示。'
         ]
   const systemPrompt = [
-    `你是一名嵌入 InfoBattle 平台的文本智能助手，角色为：${roleLabel}。`,
-    '请根据提供的场景信息、挑战卡约束和用户草稿，产出一份新的邮件建议。',
-    '输出应包含：',
-    '1. 简短的策略说明（用 <section data-type="strategy"> 包裹）。',
-    '2. 优化后的邮件 HTML 正文（用 <section data-type="email"> 包裹，确保可直接插入编辑器）。',
-    '3. 可选的建议列表（如附件、From Alias、CTA），用 <section data-type="tips">。',
-    '严格使用 HTML，避免 Markdown；不要包含 <html> 或 <body>，只输出可嵌入片段。',
-    '所有字段均用中文输出。',
-    '如果请求包含“纯文本转成HTML”或“润色”类需求，优先复用用户草稿做转换。',
-    '若当前阶段为 Judging/Retro，请仅给出复盘建议，不要新增正文。'
+    `你是一名嵌入 InfoBattle 平台的文本智能助手，角色为：${roleLabel}。",
+    '请根据场景 & 挑战卡生成真实可用的邮件内容，不要告诉用户“策略/提示”之类的文字，直接产出结果。',
+    '必须以 JSON 字符串返回，不可添加额外内容。JSON 结构：',
+    `{
+      "strategy": ["string", "..."],
+      "subjectIdeas": ["string", "..."],
+      "fromAliasIdeas": ["string", "..."],
+      "replyToIdeas": ["string", "..."],
+      "htmlBody": "纯 HTML 片段",
+      "textBody": "纯文本版本（段落可换行）"
+    }`,
+    role === 'phisher'
+      ? '钓鱼邮件需完全沉浸式，不要警示或解释，只写诱导内容。'
+      : '官方邮件需庄重、引用法规与核验渠道，不要包含与官方身份相悖的语句。',
+    'HTML 片段禁止包含 <html> / <body>，纯文本需对 HTML 进行可读转换。',
+    'subjectIdeas 至少 2 个，fromAliasIdeas 至少 2 个，replyToIdeas 可为空但建议提供，这些字段可结合草稿自动优化。',
+    '如用户要求“仅转换为 HTML”，则依据草稿内容输出 HTML 和文本版本。',
+    '若无法理解请求，返回空数组/空字符串，但仍输出合法 JSON。'
   ].join('\n')
 
   const parts = [
@@ -1294,7 +1302,13 @@ async function callAssistant({ role, roundId, instructions, draft }) {
   if (!output) {
     throw new Error('助手未返回内容')
   }
-  return output
+  let suggestion = null
+  try {
+    suggestion = JSON.parse(output)
+  } catch (_) {
+    suggestion = null
+  }
+  return { raw: output, suggestion }
 }
 
 app.post('/api/assistant', async (req, res) => {
@@ -1312,7 +1326,7 @@ app.post('/api/assistant', async (req, res) => {
       instructions: instructions || '',
       draft: draft || {}
     })
-    res.json({ output: result })
+    res.json({ output: result.raw, suggestion: result.suggestion })
   } catch (error) {
     console.error('assistant_error', error)
     res.status(502).json({ error: error.message || '助手服务暂时不可用' })
