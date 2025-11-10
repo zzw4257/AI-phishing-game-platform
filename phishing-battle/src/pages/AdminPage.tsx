@@ -49,6 +49,21 @@ import type {
   ScoreboardEntry
 } from '../types/game'
 import { describeStatus } from '../lib/stage'
+const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+const difficultyBadge = (value?: string) => {
+  switch (value) {
+    case 'easy':
+      return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+    case 'medium':
+      return 'bg-amber-100 text-amber-700 border-amber-200'
+    case 'hard':
+      return 'bg-rose-100 text-rose-700 border-rose-200'
+    case 'expert':
+      return 'bg-purple-100 text-purple-700 border-purple-200'
+    default:
+      return 'bg-gray-100 text-gray-600 border-gray-200'
+  }
+}
 
 const transitions: Record<Round['status'], Array<Round['status']>> = {
   drafting: ['judging'],
@@ -121,6 +136,10 @@ export default function AdminPage() {
   const [reportLoading, setReportLoading] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [templateFilterRole, setTemplateFilterRole] = useState<'all' | 'phisher' | 'leader'>('all')
+  const [templateFilterDifficulty, setTemplateFilterDifficulty] = useState<'all' | 'easy' | 'medium' | 'hard' | 'expert'>('all')
+  const [templateSearch, setTemplateSearch] = useState('')
+  const [templatePreview, setTemplatePreview] = useState<EmailTemplate | null>(null)
   const reportRequestRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -447,6 +466,18 @@ export default function AdminPage() {
     if (!reportData) return new Map<string, string>()
     return new Map(reportData.round.participants.map((p) => [p.player_id, p.name]))
   }, [reportData])
+  const filteredTemplates = useMemo(() => {
+    const byScenario = selectedScenario ? templatesByScenario[selectedScenario] || [] : Object.values(templatesByScenario).flat()
+    return byScenario.filter((tpl) => {
+      if (templateFilterRole !== 'all' && tpl.role !== templateFilterRole) return false
+      if (templateFilterDifficulty !== 'all' && (tpl.difficulty || 'normal') !== templateFilterDifficulty) return false
+      if (templateSearch) {
+        const haystack = `${tpl.title} ${tpl.subject} ${tpl.content_html} ${tpl.keywords || ''}`.toLowerCase()
+        if (!haystack.includes(templateSearch.toLowerCase())) return false
+      }
+      return true
+    })
+  }, [selectedScenario, templatesByScenario, templateFilterRole, templateFilterDifficulty, templateSearch])
 
   const describeAudience = (message: Message) => {
     if (!message.distribution_type || message.distribution_type === 'broadcast') {
@@ -1164,10 +1195,177 @@ export default function AdminPage() {
                   <p className="text-xs text-gray-500">
                     {isPicked ? '已选择，开启新回合时优先使用' : '点击选择此场景'}
                   </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setTemplateFilterRole('all')
+                      setTemplateFilterDifficulty('all')
+                      setTemplateSearch('')
+                      setTemplatePreview(null)
+                      setSelectedScenario(scene.id)
+                    }}
+                    className="mt-3 w-full text-center text-xs text-indigo-600 underline"
+                  >
+                    浏览全部模板
+                  </button>
                 </button>
               )
             })}
           </div>
+
+          {selectedScenario && (
+            <div className="mt-6 border rounded-xl p-4 space-y-4 bg-gray-50">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm font-semibold text-gray-900">
+                  模板库 · {scenarios.find((s) => s.id === selectedScenario)?.name || selectedScenario}
+                </p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <select
+                    value={templateFilterRole}
+                    onChange={(e) => setTemplateFilterRole(e.target.value as any)}
+                    className="border rounded-md px-2 py-1"
+                  >
+                    <option value="all">全部角色</option>
+                    <option value="phisher">钓鱼大师</option>
+                    <option value="leader">城市领袖</option>
+                  </select>
+                  <select
+                    value={templateFilterDifficulty}
+                    onChange={(e) => setTemplateFilterDifficulty(e.target.value as any)}
+                    className="border rounded-md px-2 py-1"
+                  >
+                    <option value="all">全部难度</option>
+                    <option value="easy">easy</option>
+                    <option value="medium">medium</option>
+                    <option value="hard">hard</option>
+                    <option value="expert">expert</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={templateSearch}
+                    onChange={(e) => setTemplateSearch(e.target.value)}
+                    placeholder="搜索标题/关键词"
+                    className="border rounded-md px-2 py-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTemplateFilterRole('all')
+                      setTemplateFilterDifficulty('all')
+                      setTemplateSearch('')
+                      setTemplatePreview(null)
+                    }}
+                    className="px-2 py-1 text-xs text-gray-600 underline"
+                  >
+                    重置
+                  </button>
+                </div>
+              </div>
+              {filteredTemplates.length === 0 ? (
+                <p className="text-sm text-gray-500">暂无匹配模板，可调整筛选条件。</p>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                  {filteredTemplates.map((tpl) => (
+                    <div
+                      key={tpl.id}
+                      className={`border rounded-lg p-3 bg-white cursor-pointer ${templatePreview?.id === tpl.id ? 'border-indigo-500 shadow' : 'hover:border-indigo-300'}`}
+                      onClick={() => setTemplatePreview(tpl)}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span
+                          className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                            tpl.role === 'phisher' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          }`}
+                        >
+                          {tpl.role === 'phisher' ? '钓鱼' : '官方'}
+                        </span>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full border ${difficultyBadge(tpl.difficulty)}`}>
+                          {tpl.difficulty || 'normal'}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">{tpl.title}</p>
+                      <p className="text-xs text-gray-500">{tpl.subject}</p>
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-3">{stripHtml(tpl.content_html)}</p>
+                      {tpl.keywords && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {tpl.keywords.split(',').map((kw) => (
+                            <span key={`${tpl.id}-${kw.trim()}`} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                              {kw.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {templatePreview && (
+                <div className="border rounded-lg bg-white p-4 shadow-inner">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{templatePreview.title}</p>
+                      <p className="text-xs text-gray-500">
+                        {templatePreview.role === 'phisher' ? '钓鱼大师模板' : '城市领袖模板'} · {templatePreview.subject}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className={`px-2 py-0.5 rounded-full border ${difficultyBadge(templatePreview.difficulty)}`}>
+                        难度：{templatePreview.difficulty || 'normal'}
+                      </span>
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 border rounded-md text-indigo-600 border-indigo-300"
+                        onClick={() => {
+                          navigator?.clipboard?.writeText(templatePreview.content_html)
+                          alert('HTML 已复制，可粘贴到邮件编辑器。')
+                        }}
+                      >
+                        复制 HTML
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">
+                    推荐别名/Reply-To 可在编辑器内使用 AI 助手获取，也可直接参考模板内容。
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1">HTML 预览</p>
+                      <div className="border rounded-md bg-gray-50 p-3 text-sm min-h-[160px]" dangerouslySetInnerHTML={{ __html: templatePreview.content_html }} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1">纯文本</p>
+                      <pre className="border rounded-md bg-gray-50 p-3 text-xs whitespace-pre-wrap min-h-[160px]">
+                        {stripHtml(templatePreview.content_html)}
+                      </pre>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 rounded-md text-xs bg-indigo-600 text-white"
+                      onClick={() => {
+                        setSelectedScenario(templatePreview.scenario_id)
+                        setTemplatePreview(null)
+                        setSelectedScenario(templatePreview.scenario_id)
+                        setTemplateFilterRole(templatePreview.role as any)
+                      }}
+                    >
+                      设为默认角色参考
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 rounded-md text-xs border"
+                      onClick={() => setTemplatePreview(null)}
+                    >
+                      关闭预览
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Layout>
