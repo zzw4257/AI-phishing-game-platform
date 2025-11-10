@@ -210,6 +210,7 @@ export default function PhisherPage() {
                         <Palette className="h-4 w-4 text-rose-600" />
                         钓鱼模板库
                       </h3>
+                      <span className="text-xs text-gray-500">点击套用（Drafting 阶段可编辑）</span>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                       {templates.map((tpl) => (
@@ -225,9 +226,23 @@ export default function PhisherPage() {
                           }}
                           className="text-left border rounded-lg p-3 hover:border-rose-400 disabled:opacity-60"
                         >
-                          <p className="text-xs text-gray-500 mb-1">{tpl.difficulty || 'normal'}</p>
-                          <p className="font-semibold text-gray-900">{tpl.title}</p>
-                          <p className="text-sm text-gray-600 line-clamp-2 mt-1">{stripHtml(tpl.content_html)}</p>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-semibold text-gray-900">{tpl.title}</p>
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full border ${difficultyBadge(tpl.difficulty)}`}>
+                              {tpl.difficulty || 'normal'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-rose-500 mb-1">{tpl.subject}</p>
+                          {tpl.keywords && (
+                            <div className="flex flex-wrap gap-1 mb-1">
+                              {tpl.keywords.split(',').map((kw) => (
+                                <span key={`${tpl.id}-${kw.trim()}`} className="text-[10px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-700">
+                                  {kw.trim()}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <p className="text-sm text-gray-600 line-clamp-3">{stripHtml(tpl.content_html)}</p>
                         </button>
                       ))}
                     </div>
@@ -683,3 +698,17 @@ export default function PhisherPage() {
     </Layout>
   )
 }
+  const difficultyBadge = (value?: string) => {
+    switch (value) {
+      case 'easy':
+        return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+      case 'medium':
+        return 'bg-amber-100 text-amber-700 border-amber-200'
+      case 'hard':
+        return 'bg-rose-100 text-rose-700 border-rose-200'
+      case 'expert':
+        return 'bg-purple-100 text-purple-700 border-purple-200'
+      default:
+        return 'bg-gray-100 text-gray-600 border-gray-200'
+    }
+  }

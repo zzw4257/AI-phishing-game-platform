@@ -394,6 +394,147 @@ const templateSeeds = [
 <p>请一次性上传：人脸正面照、家庭住址、物业缴费截图，以免影响信用记录。</p>`,
     difficulty: 'hard',
     keywords: '上门核查, 冻结出入证, 敏感资料'
+  },
+  // Health Subsidy - Leader Advanced Templates
+  {
+    id: 'health-official-inspection',
+    scenario_id: 'health-subsidy',
+    role: 'leader',
+    title: '专项督查整改通知',
+    subject: '【赛博城卫健委】关于健康图谱数据专项督查的整改要求',
+    content_html: `<p>各学院/社区管理者：</p>
+<p>根据市政府第 42 号督查通报，健康图谱补贴资料存在“错填基因批次、伪造截图”情况。请即日起完成以下整改：</p>
+<ol>
+  <li>登录 <strong>https://health.saibo.gov.cn/audit</strong>，下载整改清单（标注具体学员/住户）。</li>
+  <li>在 <strong>48 小时内</strong> 补交真实体检报告编号与基因上传凭证；系统将自动比对 MD5。</li>
+  <li>将异常记录反馈至 <a href="mailto:health-audit@saibo.gov.cn">health-audit@saibo.gov.cn</a>，邮件主题写明“整改 + 单位名称”。</li>
+</ol>
+<p>逾期将暂停相应补贴额度，并移交纪检部门。所有操作须在 gov.cn 域名完成，不得转发第三方链接。</p>
+<p>赛博城卫生健康委员会<br/>纪检审计处</p>`,
+    difficulty: 'hard',
+    keywords: '督查, 整改, gov 域名, 纪检'
+  },
+  {
+    id: 'health-official-newsletter',
+    scenario_id: 'health-subsidy',
+    role: 'leader',
+    title: '月度公报 + 名单公示',
+    subject: '健康图谱专项补贴月报（含合规名单与举报渠道）',
+    content_html: `<p>尊敬的市民：</p>
+<p>健康图谱补贴项目本月最新进展如下：</p>
+<table border="1" cellpadding="6">
+  <tr><th>批次</th><th>审核人数</th><th>通过比例</th><th>常见问题</th></tr>
+  <tr><td>第 7 批</td><td>2,134</td><td>91%</td><td>上传非 gov 平台截屏</td></tr>
+  <tr><td>第 8 批</td><td>1,982</td><td>88%</td><td>伪造银行流水</td></tr>
+</table>
+<p>合规名单（前 500 名）可在 <strong>https://health.saibo.gov.cn/notice</strong> 查询。若发现“收费代办”“VIP 通道”等违规，请将截图投递至 12345 或报告邮箱 <a href="mailto:report@saibo.gov.cn">report@saibo.gov.cn</a>。</p>
+<p>赛博城卫健委信息公开办</p>`,
+    difficulty: 'medium',
+    keywords: '公报, 数据表, 举报渠道'
+  },
+  // Health Subsidy - Phisher Advanced Templates
+  {
+    id: 'health-phish-lawfirm',
+    scenario_id: 'health-subsidy',
+    role: 'phisher',
+    title: '律师函欺诈',
+    subject: '【赛博城律师事务所】补贴审计函告（须缴纳保全金）',
+    content_html: `<p>赛博城律师事务所（受托于健康图谱专项）已对您提交的数据启动审计。</p>
+<p>因系统无法核验，需在 <strong>3 小时内</strong> 通过“保全通道”完成如下操作：</p>
+<ul>
+  <li>访问 <a href="http://audit-law-saibo.com">audit-law-saibo.com</a> 上传身份证 + 基因原始数据。</li>
+  <li>支付 <strong>3,800 元保全金</strong>（验票后退还）。</li>
+  <li>填写银行卡全号与开户支行，以便同步冻结风险资金。</li>
+</ul>
+<p>逾期将直接出具《失实申报函》，并将情况推送至社会信用中心。</p>
+<p>赛博城律师事务所（项目编号：SP-2023-LAW-041）</p>`,
+    difficulty: 'expert',
+    keywords: '律师函, 保全金, 社会信用, 大额付款'
+  },
+  {
+    id: 'health-phish-robot',
+    scenario_id: 'health-subsidy',
+    role: 'phisher',
+    title: 'AI 机器人审核',
+    subject: '智能审核机器人提醒：请语音确认补贴材料',
+    content_html: `<p>【AI 审核机器人】提醒：系统检测到您的健康图谱材料缺少语音确认。</p>
+<p>请立即点击 <a href="http://voice-saibo-health.com">voice-saibo-health.com</a>，在页面上：</p>
+<ol>
+  <li>录入身份证号和手机验证码。</li>
+  <li>上传语音确认文件（需要朗读指定文本）。</li>
+  <li>支付 99 元语音存证费（完成后可秒退）。</li>
+</ol>
+<p>语音未完成者将被列为“资料无效”，补贴额度自动回收。</p>`,
+    difficulty: 'medium',
+    keywords: '语音确认, 验证码, 存证费'
+  },
+  // Epidemic Tracing - Additional leader & phisher templates
+  {
+    id: 'trace-official-bulletin',
+    scenario_id: 'epidemic-tracing',
+    role: 'leader',
+    title: '病例轨迹播报 + 温馨提示',
+    subject: '赛博城疾控每日轨迹播报及核酸提醒',
+    content_html: `<p>亲爱的市民：</p>
+<p>今日新增病例轨迹主要涉及：赛博城大学图书馆、南站 14 号口等区域。请与轨迹重叠的市民：</p>
+<ul>
+  <li>24 小时内在 <strong>https://trace.saibo.gov.cn</strong> 补录行程。</li>
+  <li>前往就近核酸点免费检测（扫码 gov 码预约）。</li>
+  <li>如接到流调电话，务必核对“官方回拨 0571-12320”。</li>
+</ul>
+<p>请勿点击任何以“奖励”“话费”为名的链接，官方不会向个人索要银行卡或付款二维码。</p>
+<p>赛博城疾控流调中心</p>`,
+    difficulty: 'easy',
+    keywords: '轨迹播报, 核酸提醒, 举报'
+  },
+  {
+    id: 'trace-phish-blackmail',
+    scenario_id: 'epidemic-tracing',
+    role: 'phisher',
+    title: '黑名单威胁 + 二维码套取',
+    subject: '【流调黑名单提醒】未补录行程将永久限制出行',
+    content_html: `<p>赛博城公共安全系统检测到您多次拒绝补录行程，现已进入“重点黑名单”。</p>
+<p>请 <strong>立即扫描下方二维码</strong> 完成补录，并上传身份证、行程证明 + 支付 560 元“行政指导费”。</p>
+<p><em>二维码：{{attachment: blacklist_qr.png}}</em></p>
+<p>未按要求配合者将冻结健康码并通知所在单位执行扣薪。</p>`,
+    difficulty: 'expert',
+    keywords: '黑名单, 行政指导费, 扣薪, 二维码'
+  },
+  // Facial Database - Additional leader & phisher templates
+  {
+    id: 'face-official-checklist',
+    scenario_id: 'facial-database',
+    role: 'leader',
+    title: '采集操作清单 + 质疑回复',
+    subject: '智慧人脸库采集操作清单（含质疑答复）',
+    content_html: `<p>各社区居委会：</p>
+<p>请根据以下清单保障采集规范：</p>
+<ol>
+  <li>所有采集设备需扫描公安发布的签名证书，黑名单设备立即封禁。</li>
+  <li>居民仅需提供身份证号及人脸照片，禁止索要家庭住址、银行卡等额外信息。</li>
+  <li>质疑渠道：face@saibo.gov.cn 或 12345，公安将在 24 小时内回拨。</li>
+</ol>
+<p>如发现“扫码领奖”“上门核查收费”等情况，请第一时间截屏并抄送至纪检邮箱。</p>
+<p>赛博城公安安防升级指挥部</p>`,
+    difficulty: 'medium',
+    keywords: '清单, 签名证书, 质疑'
+  },
+  {
+    id: 'face-phish-leak',
+    scenario_id: 'facial-database',
+    role: 'phisher',
+    title: '内鬼泄密 + 文件下载钓鱼',
+    subject: '【内部通知泄露】请下载最新人脸库加密补丁',
+    content_html: `<p>公安技术科内部资料显示，早前的采集端存在漏洞，未及时安装补丁者将被追责。</p>
+<p>请下载“补丁包.zip”（内含安装器），并提交：</p>
+<ul>
+  <li>公安系统账号 + 口令（用于生成授权文件）。</li>
+  <li>所有已采集的人脸数据备份（ZIP）。</li>
+  <li>物业负责人身份证照片。</li>
+</ul>
+<p>补丁链接：<a href="http://secure-facepatch.com/patch.zip">secure-facepatch.com</a>（访问后 10 分钟自动失效）。</p>`,
+    difficulty: 'expert',
+    keywords: '内鬼, 补丁包, 账号口令, 数据备份'
   }
 ]
 
