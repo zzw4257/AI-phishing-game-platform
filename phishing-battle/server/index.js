@@ -64,6 +64,39 @@ const scenarios = [
   }
 ]
 
+const challengeCards = [
+  {
+    id: 'reward-pressure',
+    name: '悬赏压迫',
+    difficulty: 'hard',
+    summary: '坏人宣称“前1万名”可得奖励，真官方只能强调真实办理渠道。时间与奖金压力会放大所有人的心理波动。',
+    pressure: '24 小时内未申报将扣除福利，前 100 名可额外获 300 元话费。',
+    phisher_objectives: ['务必把奖励写在主题或开头，强化“限时、限量”心态。', '附带二维码/短链，暗示“官方通道拥堵”，引导走私链路。'],
+    leader_objectives: ['解释官方奖励仅限指定门户，给出可核验的政务号链接。', '提供回拨/投诉渠道，拆解钓鱼话术，邀请市民举报异常链接。'],
+    citizen_hints: ['奖补政策通常可在政务公开栏核实，遇到话费/现金奖励需保持怀疑。', '大量转发的二维码要查域名、证书以及主办单位公章。']
+  },
+  {
+    id: 'compliance-audit',
+    name: '合规稽核',
+    difficulty: 'medium',
+    summary: '赛博城正在做合规稽核，钓鱼团伙伪造“跨部门督查”，逼迫市民提交隐私文件，官方只能用制度回应。',
+    pressure: '若 4 小时内未上传资料将纳入“失信名单”。',
+    phisher_objectives: ['引用“跨部门专项”或“上级通报”，营造无法核实的权威。', '附加“盖章 PDF/附件”制造真实感，诱导下载木马或提交账号。'],
+    leader_objectives: ['说明真实稽核会提前发文并有编号，提醒仅在政务邮箱回复。', '公开数据最小化原则，指导市民拒绝上传与稽核无关的文件。'],
+    citizen_hints: ['核对文件编号、加盖单位及回传邮箱域名是否一致。', '任何“失信名单”“限 4 小时”的威胁都要通过热线或窗口复核。']
+  },
+  {
+    id: 'insider-distraction',
+    name: '内鬼烟雾',
+    difficulty: 'high',
+    summary: '系统模拟“内鬼泄密”，钓鱼大师获准假扮内部员工，官方需要澄清线索、发布安全指令。',
+    pressure: '传闻称已有 200+ 人资料外泄，情绪高度紧张。',
+    phisher_objectives: ['假装“内部好友”或者“同学”分享泄密截图，诱导点击云盘。', '混入真实术语（如项目代号/楼宇编号），骗取额外信任。'],
+    leader_objectives: ['发布事件通报 + 止血指令，要求大家只在安全通道修改密码。', '强调社工核身，提供“如何识别内部通知”的 checklist。'],
+    citizen_hints: ['任何打着“内部渠道”旗号的链接都要验证是否在官方地址表内。', '自称同事的邮件可要求视频/电话核验，别轻信共享云盘。']
+  }
+]
+
 function ensureColumn(table, column, definition) {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all()
   const exists = columns.some((col) => col.name === column)
@@ -104,6 +137,7 @@ function migrate() {
       started_at TEXT DEFAULT CURRENT_TIMESTAMP,
       finished_at TEXT,
       template_bundle TEXT,
+      challenge_card_id TEXT,
       FOREIGN KEY (scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE,
       FOREIGN KEY (phisher_id) REFERENCES players(id) ON DELETE SET NULL,
       FOREIGN KEY (leader_id) REFERENCES players(id) ON DELETE SET NULL
@@ -154,6 +188,7 @@ function migrate() {
   `)
 
   ensureColumn('rounds', 'template_bundle', 'TEXT')
+  ensureColumn('rounds', 'challenge_card_id', 'TEXT')
   ensureColumn('messages', 'content_html', 'TEXT')
   ensureColumn('messages', 'from_alias', 'TEXT')
   ensureColumn('messages', 'reply_to', 'TEXT')
@@ -294,6 +329,10 @@ function getScenarioById(id) {
   return db.prepare('SELECT * FROM scenarios WHERE id = ?').get(id)
 }
 
+function getChallengeCardById(id) {
+  return challengeCards.find((card) => card.id === id) || null
+}
+
 function getLatestRoundRow() {
   return db.prepare('SELECT * FROM rounds ORDER BY round_number DESC LIMIT 1').get()
 }
@@ -307,6 +346,7 @@ function getRoundById(id) {
 function hydrateRound(roundRow) {
   if (!roundRow) return null
   const scenario = getScenarioById(roundRow.scenario_id)
+  const challenge_card = roundRow.challenge_card_id ? getChallengeCardById(roundRow.challenge_card_id) : null
   const participants = db.prepare(`
     SELECT rp.*, p.name, p.student_id
     FROM round_participants rp
@@ -334,7 +374,7 @@ function hydrateRound(roundRow) {
     WHERE j.round_id = ?
     ORDER BY j.created_at ASC
   `).all(roundRow.id)
-  return { ...roundRow, scenario, participants, messages, judgements }
+  return { ...roundRow, scenario, participants, messages, judgements, challenge_card }
 }
 
 function computeScoreboard() {
@@ -489,6 +529,7 @@ function buildRoundScenarioConfig(round) {
       phisher: round.scenario.phisher_task,
       risk_hints: round.scenario.risk_hints
     },
+    challenge_card: round.challenge_card || null,
     participants: round.participants.map((p) => ({
       id: p.player_id,
       name: p.name,
@@ -725,6 +766,10 @@ app.get('/api/scenarios', (_req, res) => {
   res.json({ scenarios: rows })
 })
 
+app.get('/api/challenges', (_req, res) => {
+  res.json({ challenges: challengeCards })
+})
+
 app.get('/api/templates', (req, res) => {
   const { scenarioId, role } = req.query
   let query = 'SELECT * FROM email_templates WHERE 1=1'
@@ -823,7 +868,7 @@ app.post('/api/rounds/start', (req, res) => {
   const roundNumber = lastRound ? lastRound.round_number + 1 : 1
 
   // pick scenario
-  const { scenarioId } = req.body || {}
+  const { scenarioId, challengeCardId } = req.body || {}
   let scenario = scenarioId ? getScenarioById(scenarioId) : null
   if (!scenario) {
     scenario = db.prepare(`
@@ -840,6 +885,10 @@ app.post('/api/rounds/start', (req, res) => {
   }
   if (!scenario) {
     return res.status(400).json({ error: '缺少场景配置' })
+  }
+  let challengeCard = challengeCardId ? getChallengeCardById(challengeCardId) : null
+  if (!challengeCard) {
+    challengeCard = challengeCards[Math.floor(Math.random() * challengeCards.length)]
   }
 
   const pickPlayer = (column) => {
@@ -867,8 +916,8 @@ app.post('/api/rounds/start', (req, res) => {
 
   const roundId = randomUUID()
   const insertRound = db.prepare(`
-    INSERT INTO rounds (id, round_number, scenario_id, status, phisher_id, leader_id)
-    VALUES (?, ?, ?, 'drafting', ?, ?)
+    INSERT INTO rounds (id, round_number, scenario_id, status, phisher_id, leader_id, challenge_card_id)
+    VALUES (?, ?, ?, 'drafting', ?, ?, ?)
   `)
 
   const insertParticipant = db.prepare(`
@@ -881,7 +930,7 @@ app.post('/api/rounds/start', (req, res) => {
   }
 
   const tx = db.transaction(() => {
-    insertRound.run(roundId, roundNumber, scenario.id, phisher.id, leader.id)
+    insertRound.run(roundId, roundNumber, scenario.id, phisher.id, leader.id, challengeCard.id)
     insertParticipant.run(randomUUID(), roundId, phisher.id, 'phisher')
     insertParticipant.run(randomUUID(), roundId, leader.id, 'leader')
     allPlayers

@@ -7,7 +7,8 @@ import type {
   EmailTemplate,
   MailboxMessage,
   AdvancedAnalytics,
-  RoundReport
+  RoundReport,
+  ChallengeCard
 } from '../types/game'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5678/api'
@@ -56,7 +57,7 @@ export function fetchCurrentRound() {
   return request<{ round: Round | null }>(`/rounds/current`)
 }
 
-export function startRound(payload?: { scenarioId?: string }) {
+export function startRound(payload?: { scenarioId?: string; challengeCardId?: string }) {
   return request<{ round: Round }>(`/rounds/start`, {
     method: 'POST',
     body: JSON.stringify(payload || {})
@@ -137,4 +138,8 @@ export async function exportRoundReport(roundId: string) {
 
 export function fetchAnalytics() {
   return request<AdvancedAnalytics>(`/analytics`)
+}
+
+export function fetchChallenges() {
+  return request<{ challenges: ChallengeCard[] }>(`/challenges`)
 }

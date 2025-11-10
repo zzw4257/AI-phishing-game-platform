@@ -71,6 +71,7 @@ export interface Round {
   started_at: string
   finished_at?: string
   scenario: Scenario
+  challenge_card?: ChallengeCard | null
   participants: RoundParticipant[]
   messages: Message[]
   judgements: Judgement[]
@@ -100,6 +101,17 @@ export interface MailAttachment {
 export interface RecipientDescriptor {
   roles: RoundRole[]
   playerIds: string[]
+}
+
+export interface ChallengeCard {
+  id: string
+  name: string
+  difficulty: 'low' | 'medium' | 'high'
+  summary: string
+  pressure: string
+  phisher_objectives: string[]
+  leader_objectives: string[]
+  citizen_hints: string[]
 }
 
 export interface EmailTemplate {
@@ -145,6 +157,7 @@ export interface ScenarioConfig {
     phisher: string
     risk_hints: string
   }
+  challenge_card: ChallengeCard | null
   participants: Array<{
     id: string
     name: string

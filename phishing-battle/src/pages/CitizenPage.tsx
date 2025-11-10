@@ -133,6 +133,23 @@ export default function CitizenPage() {
                 <p className="text-sm text-gray-600">{round.scenario.background}</p>
                 <p className="text-xs text-gray-500 mt-2">提示：每轮至少有一封真实通知与一封钓鱼邮件，保持怀疑精神。</p>
               </div>
+              {round.challenge_card && (
+                <div className="border rounded-lg p-4 bg-amber-50/80 border-amber-200 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-amber-700">
+                      <AlertTriangle className="h-4 w-4" />
+                      挑战卡：{round.challenge_card.name}
+                    </div>
+                    <span className="text-xs font-semibold text-amber-700">{round.challenge_card.pressure}</span>
+                  </div>
+                  <p className="text-sm text-amber-900 mb-2">{round.challenge_card.summary}</p>
+                  <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
+                    {round.challenge_card.citizen_hints.map((tip) => (
+                      <li key={tip}>{tip}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="border rounded-lg divide-y max-h-[520px] overflow-y-auto">
                 {mailbox.length === 0 ? (

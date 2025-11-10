@@ -188,6 +188,24 @@ export default function CityLeaderPage() {
                   </ul>
                 </div>
 
+                {round.challenge_card && (
+                  <div className="border rounded-lg p-4 bg-indigo-50/70 border-indigo-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-indigo-700">
+                        <Shield className="h-4 w-4" />
+                        挑战卡：{round.challenge_card.name}
+                      </div>
+                      <span className="text-xs font-semibold text-indigo-600">{round.challenge_card.pressure}</span>
+                    </div>
+                    <p className="text-sm text-indigo-900 mb-2">{round.challenge_card.summary}</p>
+                    <ul className="list-disc list-inside text-sm text-indigo-800 space-y-1">
+                      {round.challenge_card.leader_objectives.map((tip) => (
+                        <li key={tip}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {templates.length > 0 && (
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">

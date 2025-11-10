@@ -28,6 +28,7 @@ import {
   fetchAnalytics,
   fetchRoundHistory,
   fetchRoundReport,
+  fetchChallenges,
   startRound,
   updateRoundPhase,
   resetDatabase,
@@ -35,6 +36,7 @@ import {
 } from '../lib/api'
 import type {
   AdvancedAnalytics,
+  ChallengeCard,
   EmailTemplate,
   Message,
   Player,
@@ -106,6 +108,8 @@ export default function AdminPage() {
   const [summary, setSummary] = useState({ totalPlayers: 0, playedAsPhisher: 0, playedAsLeader: 0, currentRound: 0 })
   const [students, setStudents] = useState('')
   const [selectedScenario, setSelectedScenario] = useState('')
+  const [challenges, setChallenges] = useState<ChallengeCard[]>([])
+  const [selectedChallenge, setSelectedChallenge] = useState('')
   const [loading, setLoading] = useState(false)
   const [phaseUpdating, setPhaseUpdating] = useState(false)
   const [analytics, setAnalytics] = useState<AdvancedAnalytics | null>(null)
@@ -132,6 +136,7 @@ export default function AdminPage() {
       })
       setTemplatesByScenario(grouped)
     })
+    fetchChallenges().then((res) => setChallenges(res.challenges))
     const basicsTimer = setInterval(loadBasics, 5000)
     const analyticsTimer = setInterval(loadAnalytics, 15000)
     return () => {
@@ -368,9 +373,13 @@ export default function AdminPage() {
   const handleStartRound = async () => {
     setPhaseUpdating(true)
     try {
-      const response = await startRound(selectedScenario ? { scenarioId: selectedScenario } : undefined)
+      const payload: { scenarioId?: string; challengeCardId?: string } = {}
+      if (selectedScenario) payload.scenarioId = selectedScenario
+      if (selectedChallenge) payload.challengeCardId = selectedChallenge
+      const response = await startRound(Object.keys(payload).length > 0 ? payload : undefined)
       setRound(response.round)
       setSelectedScenario('')
+      setSelectedChallenge('')
       await Promise.all([loadBasics(), loadRoundHistory()])
       loadAnalytics()
     } catch (error: any) {
@@ -406,6 +415,7 @@ export default function AdminPage() {
   }, [players.length, summary.playedAsLeader, summary.playedAsPhisher])
 
   const selectedScenarioDetail = scenarios.find((scene) => scene.id === selectedScenario)
+  const selectedChallengeDetail = challenges.find((card) => card.id === selectedChallenge)
   const canStartNewRound = !round || round.status === 'completed'
   const stageMeta = describeStatus(round?.status)
   const phisherSubmitted = !!round?.messages.find((m) => m.role === 'phisher')
@@ -492,6 +502,18 @@ export default function AdminPage() {
   const formatTimestamp = (timestamp?: string | null) => {
     if (!timestamp) return '时间未知'
     return new Date(timestamp).toLocaleString()
+  }
+
+  const challengeBadge = (difficulty?: ChallengeCard['difficulty']) => {
+    switch (difficulty) {
+      case 'low':
+        return { label: '低压', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' }
+      case 'medium':
+        return { label: '中压', className: 'bg-amber-50 text-amber-700 border border-amber-200' }
+      case 'high':
+      default:
+        return { label: '高压', className: 'bg-rose-50 text-rose-700 border border-rose-200' }
+    }
   }
 
   const renderTimelineDetail = (event: TimelineEvent) => {
@@ -618,6 +640,47 @@ export default function AdminPage() {
                     </p>
                   </div>
                 </div>
+                {round.challenge_card && (
+                  <div className="border rounded-lg p-4 bg-slate-50 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-slate-700">
+                        <History className="h-4 w-4" />
+                        挑战卡 · {round.challenge_card.name}
+                      </div>
+                      <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${challengeBadge(round.challenge_card.difficulty).className}`}>
+                        {challengeBadge(round.challenge_card.difficulty).label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700">{round.challenge_card.summary}</p>
+                    <p className="text-xs text-gray-500">压测规则：{round.challenge_card.pressure}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                      <div>
+                        <p className="font-semibold text-rose-700 mb-1">钓鱼大师指令</p>
+                        <ul className="list-disc list-inside space-y-1 text-gray-700">
+                          {round.challenge_card.phisher_objectives.map((tip) => (
+                            <li key={tip}>{tip}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-indigo-700 mb-1">城市领袖指令</p>
+                        <ul className="list-disc list-inside space-y-1 text-gray-700">
+                          {round.challenge_card.leader_objectives.map((tip) => (
+                            <li key={tip}>{tip}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-emerald-700 mb-1">市民情报</p>
+                        <ul className="list-disc list-inside space-y-1 text-gray-700">
+                          {round.challenge_card.citizen_hints.map((tip) => (
+                            <li key={tip}>{tip}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="border rounded-lg p-4 bg-gray-50">
                   <div className="flex items-center gap-2 text-gray-700 mb-2">
                     <Mail className="h-4 w-4" />
@@ -671,6 +734,28 @@ export default function AdminPage() {
               </select>
               {selectedScenarioDetail && (
                 <p className="mt-2 text-xs text-gray-500">{selectedScenarioDetail.background}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">挑战卡 (可选)</label>
+              <select
+                value={selectedChallenge}
+                onChange={(e) => setSelectedChallenge(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 text-sm"
+              >
+                <option value="">系统随机出牌</option>
+                {challenges.map((card) => (
+                  <option key={card.id} value={card.id}>
+                    {card.name} · {card.summary.slice(0, 10)}...
+                  </option>
+                ))}
+              </select>
+              {selectedChallengeDetail && (
+                <div className="mt-2 text-xs text-gray-600 space-y-1 bg-gray-50 border border-dashed border-gray-200 rounded-md p-2">
+                  <p className="font-semibold text-gray-700">{selectedChallengeDetail.name}</p>
+                  <p>{selectedChallengeDetail.summary}</p>
+                  <p className="text-gray-500">压测：{selectedChallengeDetail.pressure}</p>
+                </div>
               )}
             </div>
             <button
@@ -1008,6 +1093,18 @@ export default function AdminPage() {
                   </p>
                 </div>
               </div>
+              {reportData.round.challenge_card && (
+                <div className="border rounded-lg p-4 bg-white/60">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-gray-900">挑战卡回顾 · {reportData.round.challenge_card.name}</p>
+                    <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${challengeBadge(reportData.round.challenge_card.difficulty).className}`}>
+                      {challengeBadge(reportData.round.challenge_card.difficulty).label}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700">{reportData.round.challenge_card.summary}</p>
+                  <p className="text-xs text-gray-500 mt-1">压测规则：{reportData.round.challenge_card.pressure}</p>
+                </div>
+              )}
               <ol className="relative border-l border-gray-200 pl-4 space-y-4">
                 {reportData.timeline.map((event) => (
                   <li key={event.id} className="ml-4">

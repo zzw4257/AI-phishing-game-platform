@@ -8,7 +8,7 @@
 ## 2. 数据模型
 - `players`：学号、姓名、各角色轮次统计、最近登录。
 - `scenarios`：场景名称、背景、钓鱼/官方任务和风险提示。
-- `rounds`：回合序号、场景、状态(`drafting/judging/retro/completed`)、角色分配、所用模板、时间戳。
+- `rounds`：回合序号、场景、状态(`drafting/judging/retro/completed`)、角色分配、所用模板、挑战卡(`challenge_card_id`)、时间戳。
 - `round_participants`：记录每人本轮身份（钓鱼大师/城市领袖/市民）。
 - `messages`：邮件主题、纯文本、HTML、发件人别名、Reply-To、附件占位、分发策略（广播/群组/定向名单）。
 - `judgements`：市民针对具体邮件的可信/存疑及理由。
@@ -27,6 +27,7 @@
 | POST | `/rounds/start` | 开启新回合，上一轮未完成返回 409 |
 | POST | `/rounds/:id/phase` | 切换阶段（校验草稿/判断/顺序） |
 | GET | `/templates` | 查询邮件模板（支持 `scenarioId`/`role` 过滤） |
+| GET | `/challenges` | 查询挑战卡列表（每张卡包含摘要、压测规则及三类角色提示） |
 | POST | `/messages` | 钓鱼大师/城市领袖提交邮件，仅 `drafting` 可写 |
 | GET | `/mailbox?roundId=&playerId=` | 市民邮箱（仅返回其可见邮件 + 个人判断） |
 | POST | `/judgements` | 市民判断，仅 `judging/retro` 可写 |
@@ -46,6 +47,7 @@
   - `timeline`：事件序列（回合开始、角色分配、邮件提交、判断、结束）用于主持人查看或导出。
 - **/rounds/:id/export**：与 `report` 内容一致，但携带下载 Header，可直接保存 JSON 档案。后台还提供“导出情景配置”“导出流程日志”“完整报告”三个按钮，分别对应 `scenarioConfig`、`timeline` 与 `/rounds/:id/export`。
 - **/admin/reset**：主持人 UI 中的“重置数据库”即调用此接口，删除玩家/回合/邮件/判断，再次导入即可重新开局。
+- **挑战卡**：`challengeCards` 为本地配置列表，通过 `/challenges` 提供给前端；开启回合时可指定 `challengeCardId`（否则随机），`rounds.challenge_card_id` 与 `round.challenge_card` 将被携带至所有回合数据、报告与复盘界面。
 
 ## 5. 状态机规则
 - `drafting` → `judging`：必须两封邮件都已提交。
