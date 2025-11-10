@@ -305,20 +305,113 @@ const templateSeeds = [
 <p><em>二维码：{{attachment: qrcode.png}}</em></p>`,
     difficulty: 'hard',
     keywords: '扫码, 家庭住址, 现金补贴'
+  },
+  {
+    id: 'health-official-faq',
+    scenario_id: 'health-subsidy',
+    role: 'leader',
+    title: '补贴 FAQ + 安全提醒',
+    subject: '【卫健委】健康图谱补贴常见问题与核验渠道',
+    content_html: `<p>亲爱的市民：</p>
+<p>健康图谱专项补贴已开放第二批申报。为了防止钓鱼，请仅通过 <strong>https://health.saibo.gov.cn</strong> 或 12345 窗口办理。</p>
+<h4>常见问题</h4>
+<ol>
+  <li><strong>哪些材料必需？</strong> 体检报告编号 + 基因检测编号，不会索要银行卡或验证码。</li>
+  <li><strong>多久到账？</strong> 提交后 3 个工作日内原路发放，无任何“加急费”。</li>
+  <li><strong>如何核验？</strong> 回复本邮件或拨 12320，工作人员可提供工号及回拨。</li>
+</ol>
+<p>如发现奖励、二维码或要求转账的通知，请截图发送至 <a href="mailto:report@saibo.gov.cn">report@saibo.gov.cn</a>。</p>
+<p>赛博城卫健委</p>`,
+    difficulty: 'easy',
+    keywords: 'FAQ, 安全提示, 官方热线'
+  },
+  {
+    id: 'health-phish-vip',
+    scenario_id: 'health-subsidy',
+    role: 'phisher',
+    title: 'VIP 加密通道钓鱼',
+    subject: '内部渠道：VIP 加密通道 4 小时内结算补贴',
+    content_html: `<p>【加密渠道】赛博城健康图谱项目正在内部核对名单，您的补贴尚未到账。</p>
+<p>请在 <strong>4 小时内</strong> 通过 <a href="http://vip-saibo-health.com">vip-saibo-health.com</a> 上传：</p>
+<ul>
+  <li>身份证正反面高清图</li>
+  <li>基因检测原始数据压缩包</li>
+  <li>银行卡正面照片（用于核验）</li>
+</ul>
+<p>完成后系统将自动发放 500 元 + VIP 额外 300 元补贴。超时将被列入“失信名单”。</p>`,
+    difficulty: 'hard',
+    keywords: 'VIP, 失信名单, 敏感信息'
+  },
+  {
+    id: 'trace-official-hotline',
+    scenario_id: 'epidemic-tracing',
+    role: 'leader',
+    title: '流调热线与验证码说明',
+    subject: '【疾控中心】流调补录热线与验证码安全提示',
+    content_html: `<p>您好，为加快流调，请通过 <strong>https://trace.saibo.gov.cn</strong> 或拨 400-661-2100 完成补录。</p>
+<p>任何奖励、二维码或“客服”要求提供验证码均为诈骗。官方工作人员会主动告知工号，并只在 gov.cn 域名发送邮件。</p>
+<p>若已误点钓鱼链接，请立即拨 110 或发送截图至 <a href="mailto:report@saibo.gov.cn">report@saibo.gov.cn</a>。</p>
+<p>赛博城疾控中心</p>`,
+    difficulty: 'easy',
+    keywords: '热线, 验证码, 举报'
+  },
+  {
+    id: 'trace-phish-penalty',
+    scenario_id: 'epidemic-tracing',
+    role: 'phisher',
+    title: '处罚恐吓钓鱼',
+    subject: '紧急处罚：未补录行程将冻结健康码',
+    content_html: `<p>【赛博城公安督查】根据“跨部门专项”要求，如未在 2 小时内补录行程，将自动冻结健康码并纳入失信名单。</p>
+<p>请立即点击 <a href="http://trace-fastverify.com">trace-fastverify.com</a>，上传行程证明 + 身份证自拍，并缴纳 260 元“监管押金”。</p>
+<p>若不处理，系统将发送通报至所在单位。</p>`,
+    difficulty: 'hard',
+    keywords: '冻结健康码, 押金, 处罚'
+  },
+  {
+    id: 'face-official-progress',
+    scenario_id: 'facial-database',
+    role: 'leader',
+    title: '阶段性进展与隐私承诺',
+    subject: '【公共安防】智慧人脸库阶段性播报',
+    content_html: `<p>赛博城公共安防办现公布人脸库采集进展，感谢各社区配合。</p>
+<ul>
+  <li>采集通道仅限 <strong>https://secure.saibo.gov.cn/face</strong> 和公安窗口。</li>
+  <li>数据自动脱敏，政府承诺“最小化、分级管控”，可通过 12345 查询留痕。</li>
+  <li>拒绝扫码领奖或“加急审核”要求，欢迎将疑似钓鱼截图投递至 face@saibo.gov.cn。</li>
+</ul>
+<p>赛博城公共安防办</p>`,
+    difficulty: 'normal',
+    keywords: '阶段性播报, 隐私承诺, 脱敏'
+  },
+  {
+    id: 'face-phish-inspector',
+    scenario_id: 'facial-database',
+    role: 'phisher',
+    title: '伪造督导员上门核查',
+    subject: '公安督导：未上传人脸者需上门核查，请立即提交',
+    content_html: `<p>公安联合督导组已抵达您所在社区，系统显示您尚未上传家庭成员人脸数据。</p>
+<p>如 1 小时内未在 <a href="http://face-saibo-check.com">face-saibo-check.com</a> 填写资料，我们将安排督导员上门核查并冻结出入证。</p>
+<p>请一次性上传：人脸正面照、家庭住址、物业缴费截图，以免影响信用记录。</p>`,
+    difficulty: 'hard',
+    keywords: '上门核查, 冻结出入证, 敏感资料'
   }
 ]
 
 function seedTemplates() {
-  const stmt = db.prepare('SELECT COUNT(*) as count FROM email_templates')
-  const count = stmt.get().count
-  if (count === 0) {
-    const insert = db.prepare(`
-      INSERT INTO email_templates (id, scenario_id, role, title, subject, content_html, difficulty, keywords)
-      VALUES (@id, @scenario_id, @role, @title, @subject, @content_html, @difficulty, @keywords)
-    `)
-    const tx = db.transaction((items) => items.forEach((tpl) => insert.run(tpl)))
-    tx(templateSeeds)
-  }
+  const insert = db.prepare(`
+    INSERT INTO email_templates (id, scenario_id, role, title, subject, content_html, difficulty, keywords)
+    VALUES (@id, @scenario_id, @role, @title, @subject, @content_html, @difficulty, @keywords)
+    ON CONFLICT(id) DO UPDATE SET
+      scenario_id = excluded.scenario_id,
+      role = excluded.role,
+      title = excluded.title,
+      subject = excluded.subject,
+      content_html = excluded.content_html,
+      difficulty = excluded.difficulty,
+      keywords = excluded.keywords
+  `)
+  const tx = db.transaction((items) => items.forEach((tpl) => insert.run(tpl)))
+  tx(templateSeeds)
 }
 
 function listPlayers() {
@@ -1208,37 +1301,38 @@ function buildAssistantPrompt({ role, round, draft }) {
   const guidelines =
     role === 'phisher'
       ? [
-          '核心目标：伪装成可信权威，通过钓鱼或社会工程收集敏感数据或诱导支付。',
-          '必须隐藏自己的攻击意图，语气自然可信，可使用奖励、紧迫感或假冒流程。',
-          '提供的内容需兼顾真实可读性与攻击性，优先输出 HTML（含段落、列表、强调等），正文要有结构。',
-          '可以建议伪造附件名、短链描述、From Alias。',
-          '严禁直接提到自己是 AI 或提供模型调用细节。'
+          '伪装成跨部门或权威机构，制造紧迫感/奖励/处罚，诱导提交敏感信息或付款。',
+          '语气务必自然可信，禁止解释“策略”“钓鱼”或暴露 AI 身份，正文长度控制在 400~600 字。',
+          'HTML 可使用 <p>、<ol>、<strong>、<span style="color:#B42318"> 等标签做重点强调，同时提供可复制的纯文本版本。',
+          '可建议伪造附件名称、域名、别名，Reply-To 建议使用 gov/city/inspector 等格式以增强可信度。'
         ]
       : [
-          '核心目标：发布权威、透明的官方通知，引用真实法规/流程，让市民安心且识别钓鱼。',
-          '需强调核验渠道、隐私保护、举报方式与回拨信息，鼓励市民谨慎。',
-          '提供的内容应为 HTML（含标题、段落、提醒），语气稳重可信。',
-          '可以建议附件说明、FAQ、数据最小化提示。'
+          '以官方身份发布权威通知，引用法规、渠道、隐私承诺，帮助市民辨别钓鱼并完成操作。',
+          '语气稳重，正文 350~550 字，适度使用列表、FAQ、提醒条，明确核验方式/热线/举报邮箱。',
+          'HTML 使用 <p>/<ol>/<table> 等元素突出步骤或处罚说明，另提供纯文本版本，便于粘贴到文字稿。',
+          '给出可信的 From Alias / Reply-To 建议（如“赛博城卫健委”“trace@saibo.gov.cn”），避免出现虚构奖励。'
         ]
   const systemPrompt = [
-    `你是一名嵌入 InfoBattle 平台的文本智能助手，角色为：${roleLabel}。",
-    '请根据场景 & 挑战卡生成真实可用的邮件内容，不要告诉用户“策略/提示”之类的文字，直接产出结果。',
-    '必须以 JSON 字符串返回，不可添加额外内容。JSON 结构：',
+    `你是一名嵌入 InfoBattle 平台的文本智能助手，当前扮演：${roleLabel}。`,
+    '必须根据场景、挑战卡和草稿，生成可直接投放的邮件内容，绝对不能输出教学或自述信息。',
+    '最终输出仅允许是 JSON 字符串，且必须符合以下结构（不得多字节空格/注释）：',
     `{
-      "strategy": ["string", "..."],
-      "subjectIdeas": ["string", "..."],
-      "fromAliasIdeas": ["string", "..."],
-      "replyToIdeas": ["string", "..."],
-      "htmlBody": "纯 HTML 片段",
-      "textBody": "纯文本版本（段落可换行）"
-    }`,
+"strategy": ["string", "..."],
+"subjectIdeas": ["string", "..."],
+"fromAliasIdeas": ["string", "..."],
+"replyToIdeas": ["string", "..."],
+"htmlBody": "纯 HTML 片段",
+"textBody": "纯文本版本"
+}`,
+    '要求：',
+    '- strategy：2~4 条每条 1 句话的战术概述，纯文本。',
+    '- subjectIdeas：2~3 个主题灵感；fromAliasIdeas、replyToIdeas 各 2 个以上，需贴合场景（gov/city/inspector 风格）。',
+    '- htmlBody：仅输出可嵌入的 HTML 片段，不含 <html>/<body>/<script>；可用 inline style 强调重点，但不得注入脚本。',
+    '- textBody：将 HTML 内容转换为纯文本，保持段落换行，方便复制到纯文本编辑器。',
     role === 'phisher'
-      ? '钓鱼邮件需完全沉浸式，不要警示或解释，只写诱导内容。'
-      : '官方邮件需庄重、引用法规与核验渠道，不要包含与官方身份相悖的语句。',
-    'HTML 片段禁止包含 <html> / <body>，纯文本需对 HTML 进行可读转换。',
-    'subjectIdeas 至少 2 个，fromAliasIdeas 至少 2 个，replyToIdeas 可为空但建议提供，这些字段可结合草稿自动优化。',
-    '如用户要求“仅转换为 HTML”，则依据草稿内容输出 HTML 和文本版本。',
-    '若无法理解请求，返回空数组/空字符串，但仍输出合法 JSON。'
+      ? '- 钓鱼邮件必须沉浸式，不得出现“诈骗”“钓鱼”等字样，也不要劝告收件人提高警惕。'
+      : '- 官方邮件必须引用法规、实名渠道或热线，并在 HTML 中清楚写出操作步骤与核验方式。',
+    '如用户仅要求“转换为 HTML/纯文本”，请忠实转换但优化排版；如完全无法处理，返回字段置空但 JSON 仍需合法。'
   ].join('\n')
 
   const parts = [
@@ -1253,6 +1347,9 @@ function buildAssistantPrompt({ role, round, draft }) {
       `领袖提示：${challenge.leader_objectives.join('；')}`,
       `市民情报：${challenge.citizen_hints.join('；')}`
     )
+  }
+  if (guidelines?.length) {
+    parts.push(`【角色写作指令】\n- ${guidelines.join('\n- ')}`)
   }
   if (draft?.subject || draft?.body || draft?.contentHtml) {
     parts.push(
