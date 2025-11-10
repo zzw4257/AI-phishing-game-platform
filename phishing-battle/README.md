@@ -1,0 +1,69 @@
+# InfoBattle · 信息战场仿真系统
+
+一套面向信息安全课堂/演练的参与式仿真游戏，角色涵盖钓鱼大师（InfoPhisher）、城市领袖（InfoLeader）与普通市民（InfoCitizen）。系统已内建“健康补贴”“人脸库”“疫情流调”等脚本，可在本地（离线）完成部署、教学及复盘。
+
+- **前端**：React 18 + TypeScript + Vite + TailwindCSS（路径 `phishing-battle/src`）
+- **后端**：Express + better-sqlite3（路径 `server/index.js`）
+- **数据库**：`server/data/infobattle.sqlite3`（启动时自动建表并种子 3 个场景）
+
+## 快速开始
+```bash
+pnpm install             # 安装依赖（第一次运行）
+pnpm run dev:server      # 启动本地 API（http://localhost:5678/api）
+pnpm run dev             # 启动前端（http://localhost:5173）
+```
+构建静态前端：`pnpm run build`。
+
+## 主要页面
+| 路径 | 说明 |
+|------|------|
+| `/` | 登录入口 + 实时战况（排行榜、最新回合状态、预览图位） |
+| `/admin` | 主持人控制台：导入学生、挑选场景/邮件模板、阶段切换、分发日志、排行榜、角色覆盖率、高级统计、钓鱼流程日志导出、一键重置数据库 |
+| `/phisher` | 钓鱼大师面板：模板套用、富文本/HTML 邮件编辑、附件占位、定向收件设置 |
+| `/leader` | 城市领袖面板：同上，强调法规引用与官方别名 |
+| `/citizen` | 普通市民面板：仿邮箱界面（列表 + 阅读 Pane），支持 HTML 渲染、附件占位、逐封判断 |
+
+## 回合流程速览
+1. 主持人导入学生 → 点 **开启信息战**，系统自动分配钓鱼大师/城市领袖/市民。
+2. **Drafting**：钓鱼大师与城市领袖使用模板/HTML 编辑器撰写邮件，可设置广播/群组/定向单播与附件占位；未完成前不可进入下一阶段。
+3. **Judging**：市民在模拟邮箱内逐封阅读并提交“可信/存疑 + 理由”；界面实时统计结果。
+4. **Retro**：主持人带领复盘，系统仍允许追加判断用于讨论。
+5. **Completed**：归档回合，可立即开启下一轮；排行榜/角色覆盖率实时更新。
+
+## 常用 API（`http://localhost:5678/api`）
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/health` | 存活检测 |
+| GET | `/players` | 玩家列表 + 当前积分 |
+| POST | `/players/bulk` | 批量导入学生 `{"players":[{studentId,name}]}`（自动忽略学号后四位为 `0000` 的记录） |
+| GET | `/rounds` | 最近回合简表（场景、状态、时间） |
+| GET | `/rounds/current` | 当前回合的完整数据（场景、邮件、判断） |
+| GET | `/rounds/:id/report` | 指定回合的场景配置 + 邮件 + 判断 + 时间线（用于后台展示） |
+| GET | `/rounds/:id/export` | 同上但带下载 Header，便于导出 JSON 档案 |
+| POST | `/rounds/start` | 开启回合（若上一轮未完成将返回 409） |
+| POST | `/rounds/:id/phase` | 切换 `drafting → judging → retro → completed`（含校验） |
+| GET | `/templates` | 获取场景/角色对应的邮件模板 |
+| POST | `/messages` | 钓鱼大师/城市领袖提交草稿（仅 Drafting 可写，支持 HTML/附件/定向） |
+| GET | `/mailbox?roundId=&playerId=` | 普通市民邮箱列表（已过滤可见邮件 + 个人判断） |
+| POST | `/judgements` | 市民判断（仅 Judging/Retro 可写） |
+| GET | `/statistics` | 积分榜 + 角色覆盖率 + 当前回合号 |
+| GET | `/analytics` | 高级统计（场景表现、邮件类型、判断准确率） |
+| POST | `/admin/reset` | 一键清空玩家/回合/日志，保留场景与模板 |
+
+## 富文本邮件编辑 & 模板
+- 模板由 `email_templates` 表管理，每个场景至少含一套官方/钓鱼模版，可在主持人后台和角色面板中预览。
+- 编辑器支持：主题、纯文本正文、HTML 内容、发件人别名、Reply-To、附件占位说明、收件人策略（广播/角色群组/定向单播）。
+- 提交的邮件会保存 HTML/附件元数据，市民端按仿邮箱界面渲染。
+
+## 高级统计与导出
+- `/admin` 新增“攻防统计面板”：展示邮件产出、判断准确率、分发策略以及各场景的平均判断量、官方可信率、钓鱼识别率。
+- “钓鱼流程日志”模块支持查看任一历史回合的全流程时间线（角色分配 → 邮件投放 → 判断反馈），并可导出：
+  - **情景配置**：场景目标、角色分配、钓鱼/官方邮件配置；
+  - **流程日志**：完整事件时间线；
+  - **完整报告**：通过 `/rounds/:id/export` 下载带元数据的 JSON 档案。
+- 主持人可在控制台直接触发“重置数据库”按钮，清空玩家/回合/日志后即可重新导入名单，无需手动删除 SQLite 文件。
+
+## 教学建议
+- 使用 `docs/usage-guide.md` 作为课堂手册（主持人 3 步走 + 角色说明）。
+- `docs/technical-documentation.md` 可提供给技术同学，了解架构、API、状态机。
+- 需要重新开局时，优先使用后台“一键重置数据库”，亦可直接删除 `server/data/infobattle.sqlite3`。
